@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - PropAI</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+            padding: 40px 36px;
+            width: 100%;
+            max-width: 400px;
+        }
+        .logo { text-align: center; margin-bottom: 4px; }
+        .logo h1 { font-size: 26px; font-weight: 700; color: #1e293b; }
+        .logo span { color: #3b82f6; }
+        h2 { color: #1e293b; text-align: center; margin-bottom: 24px; font-weight: 600; font-size: 18px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 6px; color: #475569; font-weight: 600; font-size: 13px; }
+        .input-wrap { position: relative; }
+        input {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        input:focus { outline: none; border-color: #3b82f6; }
+        .toggle-pw {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; font-size: 13px; color: #64748b;
+        }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn:hover { background: #2563eb; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .spinner { display: none; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .alert { padding: 12px 14px; border-radius: 10px; margin-bottom: 18px; font-size: 13px; }
+        .alert-success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .register-link { text-align: center; margin-top: 18px; color: #64748b; font-size: 13px; }
+        .register-link a { color: #3b82f6; text-decoration: none; font-weight: 600; }
+        .register-link a:hover { text-decoration: underline; }
+        .cloud-badge { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 14px; }
+        .cloud-badge span { background: #f0fdf4; padding: 4px 12px; border-radius: 999px; color: #16a34a; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo"><h1>Prop<span>AI</span></h1></div>
+        <h2>🔐 Welcome Back</h2>
+
+        <% if (messages.error_msg) { %>
+            <div class="alert alert-error">⚠️ <%= messages.error_msg %></div>
+        <% } %>
+        <% if (messages.success_msg) { %>
+            <div class="alert alert-success">✅ <%= messages.success_msg %></div>
+        <% } %>
+
+        <form action="/login" method="POST" id="loginForm">
+            <div class="form-group">
+                <label for="email">Email address</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="input-wrap">
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+                    <button type="button" class="toggle-pw" id="togglePw">Show</button>
+                </div>
+            </div>
+            <button type="submit" class="btn" id="submitBtn">
+                <span class="spinner" id="spinner"></span>
+                <span id="btnText">Sign in</span>
+            </button>
+        </form>
+
+        <div class="register-link">
+            Don't have an account? <a href="/register">Create one now</a>
+        </div>
+        <div class="cloud-badge"><span>☁️ Cloud database · access from anywhere</span></div>
+    </div>
+
+    <script>
+        const togglePw = document.getElementById('togglePw');
+        const password = document.getElementById('password');
+        togglePw.onclick = () => {
+            const isHidden = password.type === 'password';
+            password.type = isHidden ? 'text' : 'password';
+            togglePw.textContent = isHidden ? 'Hide' : 'Show';
+        };
+
+        // Give clear feedback the moment the form is submitted instead of the button
+        // looking unresponsive while the server round-trip happens.
+        const form = document.getElementById('loginForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const spinner = document.getElementById('spinner');
+        const btnText = document.getElementById('btnText');
+        form.addEventListener('submit', () => {
+            submitBtn.disabled = true;
+            spinner.style.display = 'inline-block';
+            btnText.textContent = 'Signing in...';
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "name": "propai",
+  "version": "1.0.0",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "ISC",
+  "description": "PropAI: authentication + AI resume analyzer + AI mock interview, powered by Mistral AI",
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.53",
+    "bcryptjs": "^2.4.3",
+    "connect-flash": "^0.1.1",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.22.2",
+    "express-session": "^1.19.0",
+    "mammoth": "^1.12.0",
+    "mongoose": "^8.24.1",
+    "multer": "^2.2.0",
+    "passport": "^0.7.0",
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^4.0.379",
+    "tesseract.js": "^7.0.0"
+  }
+}

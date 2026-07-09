@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Case File · AI Resume Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --desk:#12141a; --desk-2:#1a1d25;
+    --paper:#f3f1e8; --paper-2:#ffffff;
+    --ink:#20242c; --ink-soft:#565f6b; --line:#dcd8c8;
+    --brass:#b8894a; --brass-dark:#8f6a38;
+    --verify:#1f7a5c; --verify-bg:#e3efe9;
+    --deny:#a83c3c; --deny-bg:#f3e4e2;
+    --focus:#3b6fa0; --radius:14px;
+    --serif:'Fraunces',Georgia,serif; --sans:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:radial-gradient(circle at 20% -10%, #232733 0%, transparent 55%), var(--desk);
+    font-family:var(--sans); color:var(--ink); min-height:100vh; padding:40px 20px 60px;
+  }
+  ::selection{ background:var(--brass); color:#fff; }
+  a{ color:inherit; }
+
+  .top-nav{ max-width:760px; margin:0 auto 18px; display:flex; justify-content:space-between; align-items:center; }
+  .top-nav a{ color:#cfd3dc; text-decoration:none; font-family:var(--mono); font-size:12px; letter-spacing:.04em; background:var(--desk-2); padding:9px 16px; border-radius:8px; border:1px solid #2b2f3a; transition:.15s; }
+  .top-nav a:hover{ background:#232733; color:#fff; }
+  .page-flash{ max-width:760px; margin:0 auto 16px; padding:12px 16px; border-radius:10px; background:var(--deny-bg); color:var(--deny); font-size:13px; border:1px solid #e2bcb6; }
+
+  .wrap{ display:flex; justify-content:center; }
+  .desk-wrap{ width:100%; max-width:760px; }
+
+  .masthead{ color:#cfd3dc; margin-bottom:22px; }
+  .masthead .kicker{ font-family:var(--mono); font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--brass); display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .masthead .kicker::before{ content:""; width:22px; height:1px; background:var(--brass); display:inline-block; }
+  .masthead h1{ font-family:var(--serif); font-weight:600; font-size:32px; color:#f4f2ea; letter-spacing:.2px; }
+  .masthead p{ font-size:14px; color:#9aa0ab; margin-top:6px; }
+
+  .folder{ position:relative; }
+  .tabs{ display:flex; gap:4px; padding-left:22px; }
+  .tab{ font-family:var(--mono); font-size:12px; letter-spacing:.04em; text-transform:uppercase; padding:10px 18px 12px; border:none; cursor:pointer; background:#e4e0d0; color:#7a745f; border-radius:10px 10px 0 0; transform:translateY(6px); transition:.15s ease; }
+  .tab:hover{ background:#ece8d9; color:#4a4636; }
+  .tab.active{ background:var(--paper); color:var(--ink); transform:translateY(0); font-weight:600; box-shadow:0 -2px 0 var(--brass) inset; }
+
+  .card{ background:var(--paper); border-radius:4px var(--radius) var(--radius) var(--radius); padding:32px; box-shadow:0 30px 60px -20px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.4) inset; position:relative; }
+  .card::before{ content:""; position:absolute; top:-16px; right:34px; width:34px; height:56px; border:5px solid var(--brass-dark); border-radius:16px; background:transparent; transform:rotate(-8deg); opacity:.9; }
+  .card::after{ content:""; position:absolute; top:-16px; right:44px; width:14px; height:40px; background:var(--paper); border-radius:8px; transform:rotate(-8deg); }
+
+  .upload-area{ border:1.5px dashed #b7b19b; border-radius:10px; padding:38px; text-align:center; cursor:pointer; transition:.2s; margin-bottom:16px; background:rgba(255,255,255,.4); }
+  .upload-area:hover{ border-color:var(--brass); background:rgba(255,255,255,.7); }
+  .upload-area.dragover{ border-color:var(--focus); background:#eef3f8; }
+  .upload-area .icon{ font-size:34px; display:block; margin-bottom:8px; }
+  .upload-area .text{ color:var(--ink); font-size:14px; }
+  .upload-area .text span{ color:var(--brass-dark); font-weight:700; text-decoration:underline; text-underline-offset:3px; }
+  .upload-area .hint{ color:var(--ink-soft); font-size:12px; margin-top:4px; font-family:var(--mono); }
+
+  .file-info{ display:none; background:var(--paper-2); padding:16px; border-radius:10px; margin-bottom:16px; border:1px solid var(--line); }
+  .file-info.visible{ display:block; }
+  .file-info .header{ display:flex; justify-content:space-between; align-items:center; }
+  .file-info .name{ font-weight:700; color:var(--ink); font-size:14px; }
+  .file-info .method{ font-size:10px; font-family:var(--mono); padding:3px 10px; border-radius:999px; font-weight:700; background:#e7ecf3; color:#2c4a6b; letter-spacing:.04em; text-transform:uppercase; margin-left:8px; }
+  .file-info .details{ color:var(--ink-soft); font-size:12px; margin-top:4px; font-family:var(--mono); }
+  .file-info .remove{ color:var(--deny); cursor:pointer; font-size:18px; background:none; border:none; padding:0 8px; }
+  .file-info .remove:hover{ color:#7a1f1f; }
+  .file-info .preview{ margin-top:10px; background:#faf9f4; padding:12px; border-radius:8px; font-size:12px; color:var(--ink-soft); max-height:150px; overflow-y:auto; white-space:pre-wrap; line-height:1.6; border:1px solid var(--line); font-family:var(--mono); }
+
+  .textarea-area{ display:none; margin-bottom:16px; }
+  .textarea-area.visible{ display:block; }
+  .textarea-area textarea{ width:100%; padding:14px 16px; border:1px solid var(--line); border-radius:10px; font-size:14px; font-family:var(--sans); resize:vertical; min-height:120px; background:var(--paper-2); }
+  .textarea-area textarea:focus{ outline:2px solid var(--focus); outline-offset:1px; border-color:transparent; }
+  .btn-load{ margin-top:8px; padding:9px 22px; background:var(--verify); color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; }
+  .btn-load:hover{ background:#175f47; }
+
+  .job-input{ margin-top:20px; }
+  .job-input label{ display:block; font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.08em; font-weight:600; color:var(--ink-soft); margin-bottom:8px; }
+  .job-row{ display:flex; gap:10px; }
+  .job-row .relative{ position:relative; flex:1; }
+  .job-row input{ width:100%; padding:11px 16px; border:1px solid var(--line); border-radius:8px; font-size:14px; background:var(--paper-2); }
+  .job-row input:focus{ outline:2px solid var(--focus); outline-offset:1px; border-color:transparent; }
+  .btn-analyze{ padding:11px 26px; background:var(--ink); color:#f3f1e8; border:none; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; white-space:nowrap; }
+  .btn-analyze:hover{ background:#3a4048; }
+  .btn-analyze:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .suggestions{ display:none; position:absolute; background:var(--paper-2); border:1px solid var(--line); border-radius:10px; box-shadow:0 14px 30px rgba(0,0,0,.15); max-height:250px; overflow-y:auto; width:100%; z-index:10; top:100%; margin-top:4px; }
+  .suggestions.visible{ display:block; }
+  .suggestions .item{ padding:10px 16px; cursor:pointer; font-size:14px; color:var(--ink); border-bottom:1px solid #f1efe6; }
+  .suggestions .item:last-child{ border-bottom:none; }
+  .suggestions .item:hover{ background:#f1efe6; }
+  .suggestions .item .highlight{ font-weight:700; color:var(--brass-dark); }
+  .suggestions .no-results, .suggestions .loading-suggestions{ padding:12px 16px; color:var(--ink-soft); font-size:13px; text-align:center; font-family:var(--mono); }
+  .suggestions .ai-search{ padding:10px 16px; background:#eef3f8; border-bottom:1px solid #d9e4ee; color:#2c4a6b; font-size:12px; text-align:center; font-family:var(--mono); }
+
+  .report{ display:none; margin-top:26px; border-top:2px dashed var(--line); padding-top:22px; }
+  .report.visible{ display:block; }
+  .report-card{ background:var(--paper-2); border-radius:12px; padding:28px; border:1px solid var(--line); position:relative; overflow:hidden; }
+  .report-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:14px; border-bottom:2px solid #f1efe6; }
+  .report-header h2{ font-family:var(--serif); font-size:19px; font-weight:600; color:var(--ink); }
+  .report-header .time{ font-size:11px; color:var(--ink-soft); font-family:var(--mono); }
+
+  .role-section{ text-align:center; padding:16px; background:#f6f4ec; border-radius:10px; margin-bottom:16px; border:1px solid var(--line); }
+  .role-section .label{ font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft); font-weight:600; }
+  .role-section .value{ font-family:var(--serif); font-size:22px; font-weight:600; color:var(--ink); margin-top:4px; }
+
+  .score-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+  .score-box{ background:var(--paper-2); padding:16px; border-radius:10px; text-align:center; border:1px solid var(--line); }
+  .score-box .label{ font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); font-weight:600; }
+  .score-box .value{ font-family:var(--mono); font-size:28px; font-weight:700; margin-top:4px; }
+  .score-box .value.high{ color:var(--verify); }
+  .score-box .value.medium{ color:var(--brass-dark); }
+  .score-box .value.low{ color:var(--deny); }
+
+  .decision-box{ position:relative; padding:18px 16px; border-radius:8px; text-align:center; margin-bottom:16px; }
+  .decision-box .stamp{ display:inline-block; font-family:var(--serif); font-weight:700; font-size:17px; letter-spacing:.06em; text-transform:uppercase; padding:8px 22px; border-radius:6px; border:3px double currentColor; transform:rotate(-3deg); }
+  .decision-box.suitable{ color:var(--verify); background:var(--verify-bg); }
+  .decision-box.unsuitable{ color:var(--deny); background:var(--deny-bg); }
+  .decision-box .conf{ display:block; margin-top:10px; font-family:var(--mono); font-size:12px; color:var(--ink-soft); }
+
+  .summary-box{ background:#faf9f4; padding:16px; border-radius:10px; margin-bottom:16px; border:1px solid var(--line); line-height:1.65; color:var(--ink); font-size:14px; }
+  .summary-box .label{ font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); font-weight:600; margin-bottom:6px; }
+
+  .skills-section{ margin-bottom:16px; }
+  .skills-section .label{ font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.06em; font-weight:600; margin-bottom:8px; color:var(--ink-soft); }
+  .skill-tag{ display:inline-block; padding:4px 13px; border-radius:999px; font-size:12px; margin:3px 4px 3px 0; font-weight:600; }
+  .skill-tag.strength{ background:var(--verify-bg); color:var(--verify); border:1px solid #b8d9c9; }
+  .skill-tag.missing{ background:var(--deny-bg); color:var(--deny); border:1px solid #e2bcb6; }
+
+  .rec-section{ background:#faf9f4; padding:16px; border-radius:10px; border:1px solid var(--line); margin-bottom:16px; }
+  .rec-section .label{ font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.06em; font-weight:600; margin-bottom:8px; color:var(--ink-soft); }
+  .rec-item{ display:flex; align-items:flex-start; gap:10px; padding:5px 0; font-size:14px; color:var(--ink); }
+  .rec-item .num{ color:var(--brass-dark); font-weight:700; min-width:20px; font-family:var(--mono); font-size:13px; }
+
+  .est-box{ text-align:center; padding:16px; background:var(--verify-bg); border-radius:10px; border:1px solid #b8d9c9; }
+  .est-box .label{ font-family:var(--mono); font-size:11px; color:var(--ink-soft); font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+  .est-box .value{ font-family:var(--serif); font-size:32px; font-weight:700; color:var(--verify); margin-top:2px; }
+
+  .report-actions{ display:flex; gap:10px; margin-top:20px; justify-content:flex-end; }
+  .download-btn{ padding:10px 22px; background:var(--brass-dark); color:white; border:none; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; }
+  .download-btn:hover{ background:#75542a; }
+
+  .interview-cta{ display:none; margin-top:18px; text-align:center; padding:20px; background:linear-gradient(135deg, var(--verify), #175f47); border-radius:10px; }
+  .interview-cta.visible{ display:block; }
+  .interview-cta p{ color:#eafff4; margin-bottom:10px; font-size:14px; font-family:var(--mono); }
+  .interview-cta a{ display:inline-block; background:var(--paper-2); color:var(--verify); padding:10px 24px; border-radius:8px; text-decoration:none; font-weight:700; }
+
+  .status{ margin-top:16px; text-align:center; font-size:13px; color:#9aa0ab; padding:9px; border-radius:8px; font-family:var(--mono); }
+  .status.error{ color:#f0a8a2; background:#3a2323; }
+  .status.loading{ color:#a9c6e6; background:#1e2a38; font-weight:600; }
+  .status.success{ color:#a9dcc0; background:#17301f; }
+
+  .spinner{ display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .6s linear infinite; margin-right:8px; vertical-align:middle; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  button:focus-visible, input:focus-visible, textarea:focus-visible{ outline:2px solid var(--focus); outline-offset:2px; }
+
+  @media (max-width:640px){
+    .card{ padding:20px; } .upload-area{ padding:24px; } .job-row{ flex-direction:column; }
+    .btn-analyze{ width:100%; } .score-grid{ grid-template-columns:1fr; }
+    .report-header{ flex-direction:column; align-items:flex-start; gap:8px; }
+  }
+  @media (prefers-reduced-motion: reduce){ *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; } }
+</style>
+</head>
+<body>
+
+<div class="top-nav">
+  <a href="/dashboard">&larr; Dashboard</a>
+  <a href="/interview">Mock Interview</a>
+</div>
+
+<% if (messages.error_msg) { %>
+  <div class="page-flash"><%= messages.error_msg %></div>
+<% } %>
+
+<div class="wrap">
+<div class="desk-wrap">
+  <div class="masthead">
+    <div class="kicker">Case File · Resume Intake</div>
+    <h1>AI Resume Analyzer</h1>
+    <p>Upload a resume, name the role you're after, and get a scored, honest read on the match.</p>
+  </div>
+
+  <div class="folder">
+    <div class="tabs" role="tablist">
+      <button class="tab active" id="tabFile" role="tab" aria-selected="true">Upload File</button>
+      <button class="tab" id="tabText" role="tab" aria-selected="false">Paste Text</button>
+    </div>
+
+    <div class="card">
+      <div id="fileSection">
+        <div class="upload-area" id="dropZone" tabindex="0" role="button" aria-label="Upload resume file">
+          <input type="file" id="fileInput" accept=".pdf,.docx,.txt" style="display:none;" />
+          <span class="icon">📤</span>
+          <p class="text">Drop your resume here, or <span>browse</span></p>
+          <p class="hint">PDF · DOCX · TXT — up to 8MB</p>
+        </div>
+
+        <div class="file-info" id="fileInfo">
+          <div class="header">
+            <div><span class="name" id="fileName">resume.pdf</span><span class="method" id="methodBadge">PDF</span></div>
+            <button class="remove" id="removeFile" aria-label="Remove file">✕</button>
+          </div>
+          <div class="details" id="fileDetails">0 KB · 0 characters</div>
+          <div class="preview" id="previewText"></div>
+        </div>
+      </div>
+
+      <div class="textarea-area" id="textSection">
+        <textarea id="resumeTextArea" placeholder="Paste your entire resume text here..."></textarea>
+        <button class="btn-load" id="loadTextBtn">Load Resume Text</button>
+      </div>
+
+      <div class="job-input">
+        <label>Target Job</label>
+        <div class="job-row">
+          <div class="relative">
+            <input id="jobInput" type="text" placeholder="Type to search jobs..." autocomplete="off" />
+            <div class="suggestions" id="suggestionsBox"></div>
+          </div>
+          <button class="btn-analyze" id="analyzeBtn">Analyze</button>
+        </div>
+      </div>
+
+      <div class="report" id="reportContainer">
+        <div class="report-card">
+          <div class="report-header">
+            <h2>Analysis Report</h2>
+            <span class="time" id="reportTimestamp"></span>
+          </div>
+          <div id="reportContent"></div>
+          <div class="report-actions">
+            <button class="download-btn" id="downloadBtn">Download Report</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="interview-cta" id="interviewCta">
+        <p>Analysis saved. Ready to practice for this role?</p>
+        <a href="/interview">Start Mock Interview &rarr;</a>
+      </div>
+
+      <div class="status" id="status">Upload a resume or paste text to get started.</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+const dropZone = document.getElementById('dropZone');
+const fileInfo = document.getElementById('fileInfo');
+const fileName = document.getElementById('fileName');
+const fileDetails = document.getElementById('fileDetails');
+const methodBadge = document.getElementById('methodBadge');
+const previewText = document.getElementById('previewText');
+const removeFileBtn = document.getElementById('removeFile');
+const jobInput = document.getElementById('jobInput');
+const suggestionsBox = document.getElementById('suggestionsBox');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const reportContainer = document.getElementById('reportContainer');
+const reportContent = document.getElementById('reportContent');
+const reportTimestamp = document.getElementById('reportTimestamp');
+const status = document.getElementById('status');
+const tabFile = document.getElementById('tabFile');
+const tabText = document.getElementById('tabText');
+const textSection = document.getElementById('textSection');
+const fileSection = document.getElementById('fileSection');
+const resumeTextArea = document.getElementById('resumeTextArea');
+const loadTextBtn = document.getElementById('loadTextBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const interviewCta = document.getElementById('interviewCta');
+
+let resumeText = '';
+let isAnalyzing = false;
+let allJobSuggestions = [];
+let suggestionsLoaded = false;
+let lastAnalysis = null;
+
+function setStatus(msg, type = '') {
+  status.textContent = msg;
+  status.className = 'status ' + type;
+}
+
+// Escapes untrusted text before it's ever placed into innerHTML. Any AI-generated
+// or user-entered string (targetJob, summary, skills, recommendations) MUST go
+// through this before being inserted as HTML.
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function updateFileUI(name, size, method, text, charCount) {
+  fileName.textContent = name;
+  fileDetails.textContent = `${formatSize(size)} · ${charCount || text.length} characters`;
+  methodBadge.textContent = method;
+  previewText.textContent = text.slice(0, 400) + (text.length > 400 ? '...' : '');
+  fileInfo.classList.add('visible');
+  dropZone.style.display = 'none';
+}
+
+function clearAll() {
+  resumeText = '';
+  fileInput.value = '';
+  resumeTextArea.value = '';
+  allJobSuggestions = [];
+  suggestionsLoaded = false;
+  lastAnalysis = null;
+  fileInfo.classList.remove('visible');
+  dropZone.style.display = 'block';
+  reportContainer.classList.remove('visible');
+  interviewCta.classList.remove('visible');
+  suggestionsBox.classList.remove('visible');
+  setStatus('Upload a resume or paste text to get started.');
+}
+
+function renderReport(data) {
+  const { targetJob, matchScore, atsScore, decision, confidence, summary, strengths, missingSkills, recommendations, estimatedAfterImprovement } = data;
+
+  let scoreClass = 'medium';
+  if (matchScore >= 70) scoreClass = 'high';
+  else if (matchScore < 40) scoreClass = 'low';
+
+  const decisionClass = decision === 'SUITABLE' ? 'suitable' : 'unsuitable';
+
+  let html = '';
+  html += `<div class="role-section"><div class="label">Target Role</div><div class="value">${escapeHtml(targetJob)}</div></div>`;
+  html += `<div class="score-grid">
+      <div class="score-box"><div class="label">Match Score</div><div class="value ${scoreClass}">${matchScore}%</div></div>
+      <div class="score-box"><div class="label">ATS Score</div><div class="value">${atsScore}/100</div></div>
+    </div>`;
+  html += `<div class="decision-box ${decisionClass}">
+      <span class="stamp">${decision === 'SUITABLE' ? 'Suitable' : 'Not Suitable'}</span>
+      <span class="conf">Confidence ${confidence}%</span>
+    </div>`;
+  html += `<div class="summary-box"><div class="label">Summary</div>${escapeHtml(summary)}</div>`;
+
+  if (strengths && strengths.length > 0) {
+    html += `<div class="skills-section"><div class="label">Strengths</div>${strengths.map(s => `<span class="skill-tag strength">${escapeHtml(s)}</span>`).join('')}</div>`;
+  }
+  if (missingSkills && missingSkills.length > 0) {
+    html += `<div class="skills-section"><div class="label">Missing Skills</div>${missingSkills.map(s => `<span class="skill-tag missing">${escapeHtml(s)}</span>`).join('')}</div>`;
+  }
+  if (recommendations && recommendations.length > 0) {
+    html += `<div class="rec-section"><div class="label">Top Recommendations</div>${recommendations.map((r, i) => `<div class="rec-item"><span class="num">${i + 1}.</span><span>${escapeHtml(r)}</span></div>`).join('')}</div>`;
+  }
+  html += `<div class="est-box"><div class="label">Estimated Match After Improvement</div><div class="value">${estimatedAfterImprovement}%</div></div>`;
+
+  reportContent.innerHTML = html;
+  reportContainer.classList.add('visible');
+  reportContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function downloadReport() {
+  if (!lastAnalysis) return;
+  const data = lastAnalysis;
+  const date = new Date().toLocaleString();
+  const text = `
+AI RESUME ANALYSIS REPORT
+────────────────────────────────
+
+Target Role: ${data.targetJob}
+
+Match Score: ${data.matchScore}%
+ATS Score: ${data.atsScore}/100
+
+Final Decision: ${data.decision}
+Confidence: ${data.confidence}%
+
+Summary:
+${data.summary}
+
+Strengths
+${data.strengths.map(s => `• ${s}`).join('\n')}
+
+Missing Skills
+${data.missingSkills.map(s => `• ${s}`).join('\n')}
+
+Top Recommendations
+${data.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
+
+Estimated Match After Improvement: ${data.estimatedAfterImprovement}%
+
+────────────────────────────────
+Generated: ${date}
+  `;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Resume_Analysis_Report_${data.targetJob.replace(/\s+/g, '_')}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['pdf', 'docx', 'txt'].includes(ext)) {
+    setStatus('Please upload PDF, DOCX, or TXT.', 'error');
+    return;
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    setStatus('File is too large. Max size is 8MB.', 'error');
+    return;
+  }
+
+  setStatus('Processing file...', 'loading');
+  try {
+    const formData = new FormData();
+    formData.append('resume', file);
+    const response = await fetch('/upload', { method: 'POST', body: formData });
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message || 'Upload failed');
+
+    resumeText = data.text;
+    updateFileUI(data.fileName, file.size, data.method, resumeText, data.charCount);
+    setStatus(`Extracted ${data.charCount} characters`, 'success');
+    reportContainer.classList.remove('visible');
+    interviewCta.classList.remove('visible');
+    await loadSuggestions(resumeText);
+  } catch (error) {
+    setStatus(error.message, 'error');
+    console.error(error);
+  }
+}
+
+function handlePasteText() {
+  const text = resumeTextArea.value.trim();
+  if (!text || text.length < 20) {
+    setStatus('Please paste at least 20 characters.', 'error');
+    return;
+  }
+  resumeText = text;
+  updateFileUI('Pasted Text', text.length, 'PASTE', resumeText, text.length);
+  setStatus(`Loaded ${text.length} characters`, 'success');
+  reportContainer.classList.remove('visible');
+  interviewCta.classList.remove('visible');
+  loadSuggestions(resumeText);
+}
+
+async function loadSuggestions(text) {
+  if (!text || text.length < 20) return;
+  setStatus('AI generating job suggestions...', 'loading');
+  suggestionsBox.innerHTML = '<div class="loading-suggestions">Generating job suggestions…</div>';
+  suggestionsBox.classList.add('visible');
+
+  try {
+    const response = await fetch('/get-suggestions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resumeText: text.slice(0, 1500) })
+    });
+    const data = await response.json();
+    if (data.success && data.suggestions && data.suggestions.length > 0) {
+      allJobSuggestions = data.suggestions;
+      suggestionsLoaded = true;
+      setStatus(`${allJobSuggestions.length} job suggestions loaded. Type to filter.`, 'success');
+      renderFilteredSuggestions('');
+    } else {
+      throw new Error('No suggestions');
+    }
+  } catch (error) {
+    console.error('Suggestions error:', error);
+    allJobSuggestions = ['Frontend Developer', 'React Developer', 'Full Stack Developer', 'Web Developer', 'UI Developer', 'JavaScript Developer', 'Software Engineer', 'Frontend Engineer'];
+    suggestionsLoaded = true;
+    setStatus(`${allJobSuggestions.length} suggestions loaded`, 'success');
+    renderFilteredSuggestions('');
+  }
+}
+
+async function aiSearch(query) {
+  if (!resumeText || resumeText.length < 20) return;
+  suggestionsBox.innerHTML = '<div class="loading-suggestions">Searching for jobs…</div>';
+  suggestionsBox.classList.add('visible');
+
+  try {
+    const response = await fetch('/search-job', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, resumeText: resumeText.slice(0, 800) })
+    });
+    const data = await response.json();
+    suggestionsBox.innerHTML = '';
+    if (data.success && data.suggestions && data.suggestions.length > 0) {
+      const header = document.createElement('div');
+      header.className = 'ai-search';
+      header.textContent = `AI suggestions for "${query}":`;
+      suggestionsBox.appendChild(header);
+      data.suggestions.forEach(job => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.textContent = job;
+        div.addEventListener('click', () => { jobInput.value = job; suggestionsBox.classList.remove('visible'); });
+        suggestionsBox.appendChild(div);
+      });
+    } else {
+      const noRes = document.createElement('div');
+      noRes.className = 'no-results';
+      noRes.textContent = `No jobs found matching "${query}"`;
+      suggestionsBox.appendChild(noRes);
+    }
+    suggestionsBox.classList.add('visible');
+  } catch (error) {
+    console.error('AI Search error:', error);
+    suggestionsBox.innerHTML = '';
+    const noRes = document.createElement('div');
+    noRes.className = 'no-results';
+    noRes.textContent = `No jobs found matching "${query}"`;
+    suggestionsBox.appendChild(noRes);
+    suggestionsBox.classList.add('visible');
+  }
+}
+
+function renderFilteredSuggestions(query) {
+  if (!suggestionsLoaded || allJobSuggestions.length === 0) {
+    suggestionsBox.innerHTML = '<div class="loading-suggestions">Loading suggestions…</div>';
+    suggestionsBox.classList.add('visible');
+    return;
+  }
+
+  const lowerQuery = query.toLowerCase().trim();
+  suggestionsBox.innerHTML = '';
+
+  const buildItem = (job, highlightRange) => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    if (highlightRange) {
+      const { before, match, after } = highlightRange;
+      div.append(document.createTextNode(before));
+      const strong = document.createElement('span');
+      strong.className = 'highlight';
+      strong.textContent = match;
+      div.appendChild(strong);
+      div.append(document.createTextNode(after));
+    } else {
+      div.textContent = job;
+    }
+    div.addEventListener('click', () => { jobInput.value = job; suggestionsBox.classList.remove('visible'); });
+    return div;
+  };
+
+  const appendMoreNote = (count) => {
+    const more = document.createElement('div');
+    more.className = 'item';
+    more.style.color = '#9aa0ab';
+    more.style.fontStyle = 'italic';
+    more.textContent = `+ ${count} more matches...`;
+    suggestionsBox.appendChild(more);
+  };
+
+  if (lowerQuery.length === 0) {
+    allJobSuggestions.slice(0, 15).forEach(job => suggestionsBox.appendChild(buildItem(job)));
+    if (allJobSuggestions.length > 15) appendMoreNote(allJobSuggestions.length - 15);
+    suggestionsBox.classList.add('visible');
+    return;
+  }
+
+  const filtered = allJobSuggestions.filter(job => job.toLowerCase().includes(lowerQuery));
+  if (filtered.length > 0) {
+    filtered.slice(0, 15).forEach(job => {
+      const index = job.toLowerCase().indexOf(lowerQuery);
+      if (index !== -1) {
+        suggestionsBox.appendChild(buildItem(job, {
+          before: job.substring(0, index),
+          match: job.substring(index, index + lowerQuery.length),
+          after: job.substring(index + lowerQuery.length)
+        }));
+      } else {
+        suggestionsBox.appendChild(buildItem(job));
+      }
+    });
+    if (filtered.length > 15) appendMoreNote(filtered.length - 15);
+    suggestionsBox.classList.add('visible');
+  } else if (query.length >= 2) {
+    aiSearch(query);
+  } else {
+    const noRes = document.createElement('div');
+    noRes.className = 'no-results';
+    noRes.textContent = `No jobs found matching "${query}"`;
+    suggestionsBox.appendChild(noRes);
+    suggestionsBox.classList.add('visible');
+  }
+}
+
+async function generateReport() {
+  if (!resumeText || resumeText.length < 20) {
+    setStatus('Please upload or paste a resume first.', 'error');
+    return;
+  }
+  const job = jobInput.value.trim();
+  if (!job) {
+    setStatus('Enter or select a target job.', 'error');
+    return;
+  }
+  if (isAnalyzing) return;
+  isAnalyzing = true;
+  analyzeBtn.disabled = true;
+  analyzeBtn.innerHTML = '<span class="spinner"></span> Analyzing...';
+  reportContainer.classList.remove('visible');
+  interviewCta.classList.remove('visible');
+  suggestionsBox.classList.remove('visible');
+  setStatus('AI analyzing your resume...', 'loading');
+
+  try {
+    const response = await fetch('/analyze', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resumeText, targetJob: job })
+    });
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message);
+
+    lastAnalysis = data.analysis;
+    reportTimestamp.textContent = `Generated: ${new Date().toLocaleString()}`;
+    renderReport(data.analysis);
+    interviewCta.classList.add('visible');
+    setStatus('Analysis complete!', 'success');
+  } catch (error) {
+    setStatus('Error: ' + error.message, 'error');
+    console.error(error);
+  } finally {
+    isAnalyzing = false;
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = 'Analyze';
+  }
+}
+
+tabFile.addEventListener('click', () => {
+  tabFile.className = 'tab active'; tabFile.setAttribute('aria-selected', 'true');
+  tabText.className = 'tab'; tabText.setAttribute('aria-selected', 'false');
+  fileSection.style.display = 'block';
+  textSection.classList.remove('visible');
+});
+tabText.addEventListener('click', () => {
+  tabText.className = 'tab active'; tabText.setAttribute('aria-selected', 'true');
+  tabFile.className = 'tab'; tabFile.setAttribute('aria-selected', 'false');
+  fileSection.style.display = 'none';
+  textSection.classList.add('visible');
+});
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+removeFileBtn.addEventListener('click', clearAll);
+loadTextBtn.addEventListener('click', handlePasteText);
+downloadBtn.addEventListener('click', downloadReport);
+
+let debounceTimer;
+jobInput.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  const query = jobInput.value;
+  if (!suggestionsLoaded) {
+    suggestionsBox.innerHTML = '<div class="loading-suggestions">Loading suggestions…</div>';
+    suggestionsBox.classList.add('visible');
+    return;
+  }
+  debounceTimer = setTimeout(() => renderFilteredSuggestions(query), 300);
+});
+jobInput.addEventListener('focus', () => {
+  if (suggestionsLoaded && allJobSuggestions.length > 0) renderFilteredSuggestions(jobInput.value);
+});
+jobInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); suggestionsBox.classList.remove('visible'); generateReport(); }
+  if (e.key === 'Escape') suggestionsBox.classList.remove('visible');
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#jobInput') && !e.target.closest('#suggestionsBox')) {
+    suggestionsBox.classList.remove('visible');
+  }
+});
+analyzeBtn.addEventListener('click', generateReport);
+
+setStatus('Upload a resume or paste text to get started.');
+</script>
+</body>
+</html>
