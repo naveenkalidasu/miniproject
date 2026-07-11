@@ -4,7 +4,6 @@ const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const flash = require('connect-flash');
 const mongoose = require('mongoose');
 const multer = require('multer');
@@ -27,37 +26,16 @@ const PORT = process.env.PORT || 3000;
 // ============================================================
 // MONGODB CONNECTION
 // ============================================================
-console.log('📡 Attempting to connect to MongoDB...');
-
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://naveenkalidasu_db_user:PMJK36th3QfTesXc@cluster0.0ndmeb3.mongodb.net/CareerPilot";
-
-const mongooseOptions = {
-    serverSelectionTimeoutMS: 10000,
+console.log('Attempting to connect to MongoDB...');
+mongoose.connect(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
-    family: 4,
-    maxPoolSize: 10,
-    minPoolSize: 2,
-    retryWrites: true,
-    retryReads: true,
-};
-
-mongoose.connect(MONGODB_URI, mongooseOptions)
-    .then(() => {
-        console.log('✅ MongoDB connected successfully!');
-        console.log(`📁 Database: ${mongoose.connection.db.databaseName}`);
-    })
+})
+    .then(() => console.log('MongoDB connected:', mongoose.connection.db.databaseName))
     .catch(err => {
-        console.error('❌ MongoDB connection error:', err.message);
-        console.log('⚠️  Continuing without DB — auth/report persistence will fail until this is fixed.');
+        console.error('MongoDB connection error:', err.message);
+        console.log('Continuing without DB — auth/report persistence will fail until this is fixed.');
     });
-
-mongoose.connection.on('error', (err) => {
-    console.error('❌ MongoDB connection error event:', err.message);
-});
-
-mongoose.connection.on('disconnected', () => {
-    console.log('⚠️  MongoDB disconnected. Attempting to reconnect...');
-});
 
 // ============================================================
 // MIDDLEWARE
@@ -66,19 +44,12 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Session configuration
 app.use(session({
     secret: process.env.SESSION_SECRET || 'propai_secret_key_change_me',
     resave: false,
     saveUninitialized: false,
-    cookie: { 
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        sameSite: 'lax'
-    }
+    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
 }));
-
 app.use(flash());
 app.use(passport.initialize());
 app.use(passport.session());
@@ -86,105 +57,26 @@ app.use(passport.session());
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// ============================================================
-// PASSPORT CONFIGURATION
-// ============================================================
-passport.serializeUser((user, done) => {
-    done(null, user.id);
-});
-
+passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
     try {
-        if (mongoose.connection.readyState !== 1) {
-            console.warn('⚠️  MongoDB not connected during deserialize');
-            return done(new Error('Database not connected'), null);
-        }
         const user = await User.findById(id);
         done(null, user);
     } catch (error) {
-        console.error('Deserialize error:', error.message);
         done(error, null);
     }
 });
 
-// ============================================================
-// GOOGLE OAUTH STRATEGY
-// ============================================================
-passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'YOUR_GOOGLE_CLIENT_SECRET',
-    callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/google/callback',
-    scope: ['profile', 'email']
-},
-async (accessToken, refreshToken, profile, done) => {
-    try {
-        console.log('🔍 Google profile received:', profile.id);
-        
-        // Check if user already exists
-        let user = await User.findOne({ 
-            $or: [
-                { googleId: profile.id },
-                { email: profile.emails[0].value }
-            ]
-        });
-
-        if (user) {
-            // Update existing user
-            if (!user.googleId) {
-                user.googleId = profile.id;
-            }
-            user.name = profile.displayName || user.name;
-            user.photo = profile.photos[0]?.value || user.photo;
-            user.lastLogin = new Date();
-            user.loginCount = (user.loginCount || 0) + 1;
-            await user.save();
-            console.log('✅ Existing user logged in:', user.email);
-        } else {
-            // Create new user
-            user = new User({
-                googleId: profile.id,
-                name: profile.displayName || profile.emails[0].value.split('@')[0],
-                email: profile.emails[0].value,
-                photo: profile.photos[0]?.value || '',
-                authProvider: 'google',
-                loginCount: 1,
-                lastLogin: new Date(),
-                createdAt: new Date()
-            });
-            await user.save();
-            console.log('✅ New user created via Google:', user.email);
-        }
-
-        return done(null, user);
-    } catch (error) {
-        console.error('Google strategy error:', error);
-        return done(error, null);
-    }
-}));
-
-// ============================================================
-// AUTH MIDDLEWARE
-// ============================================================
 const isAuthenticated = (req, res, next) => {
     if (req.isAuthenticated()) return next();
     req.flash('error_msg', 'Please login first');
     res.redirect('/login');
 };
 
-const checkDBConnection = (req, res, next) => {
-    if (mongoose.connection.readyState !== 1) {
-        req.flash('error_msg', 'Database is currently unavailable. Please try again later.');
-        return res.redirect(req.isAuthenticated() ? '/dashboard' : '/login');
-    }
-    next();
-};
-
-// ============================================================
-// MULTER CONFIGURATION
-// ============================================================
+// Multer: keep uploads in memory, no disk writes needed since we extract text immediately
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 8 * 1024 * 1024 },
+    limits: { fileSize: 8 * 1024 * 1024 }, // 8MB
     fileFilter: (req, file, cb) => {
         const ok = ['.pdf', '.docx', '.txt'].includes(path.extname(file.originalname).toLowerCase());
         cb(ok ? null : new Error('Only PDF, DOCX, and TXT files are supported'), ok);
@@ -200,10 +92,7 @@ app.get('/', (req, res) => {
 
 app.get('/login', (req, res) => {
     if (req.isAuthenticated()) return res.redirect('/dashboard');
-    res.render('login', { 
-        messages: req.flash(),
-        hasGoogleAuth: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID')
-    });
+    res.render('login', { messages: req.flash() });
 });
 
 app.get('/register', (req, res) => {
@@ -211,31 +100,7 @@ app.get('/register', (req, res) => {
     res.render('register', { messages: req.flash() });
 });
 
-// ============================================================
-// GOOGLE OAUTH ROUTES
-// ============================================================
-// Google authentication route
-app.get('/auth/google',
-    passport.authenticate('google', { 
-        scope: ['profile', 'email'],
-        prompt: 'select_account' // Forces account selection
-    })
-);
-
-// Google callback route
-app.get('/auth/google/callback',
-    passport.authenticate('google', { 
-        failureRedirect: '/login',
-        failureFlash: true,
-        successRedirect: '/dashboard',
-        successFlash: 'Successfully logged in with Google!'
-    })
-);
-
-// ============================================================
-// LOCAL AUTH ROUTES
-// ============================================================
-app.post('/register', checkDBConnection, async (req, res) => {
+app.post('/register', async (req, res) => {
     try {
         const { name, email, password, confirmPassword } = req.body;
 
@@ -252,12 +117,7 @@ app.post('/register', checkDBConnection, async (req, res) => {
             return res.redirect('/register');
         }
 
-        const existingUser = await User.findOne({ 
-            $or: [
-                { email: email.toLowerCase().trim() },
-                { googleId: email.toLowerCase().trim() }
-            ]
-        });
+        const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
         if (existingUser) {
             req.flash('error_msg', 'Email already registered');
             return res.redirect('/register');
@@ -281,7 +141,7 @@ app.post('/register', checkDBConnection, async (req, res) => {
     }
 });
 
-app.post('/login', checkDBConnection, async (req, res) => {
+app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         if (!email || !password) {
@@ -302,12 +162,10 @@ app.post('/login', checkDBConnection, async (req, res) => {
         }
 
         user.lastLogin = new Date();
-        user.loginCount = (user.loginCount || 0) + 1;
         await user.save();
 
         req.logIn(user, (err) => {
             if (err) {
-                console.error('Login error:', err);
                 req.flash('error_msg', 'Login failed');
                 return res.redirect('/login');
             }
@@ -321,7 +179,7 @@ app.post('/login', checkDBConnection, async (req, res) => {
     }
 });
 
-app.get('/dashboard', isAuthenticated, checkDBConnection, async (req, res) => {
+app.get('/dashboard', isAuthenticated, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
         if (!user) {
@@ -338,17 +196,12 @@ app.get('/dashboard', isAuthenticated, checkDBConnection, async (req, res) => {
 
 app.get('/logout', (req, res) => {
     req.logout((err) => {
-        if (err) {
-            console.error('Logout error:', err);
-        }
-        req.session.destroy(() => {
-            res.redirect('/login');
-        });
+        req.session.destroy(() => res.redirect('/login'));
     });
 });
 
 // ============================================================
-// RESUME ANALYZER ROUTES (Same as before)
+// RESUME ANALYZER ROUTES
 // ============================================================
 app.get('/resume', isAuthenticated, (req, res) => {
     res.render('resume', { messages: req.flash() });
@@ -357,6 +210,9 @@ app.get('/resume', isAuthenticated, (req, res) => {
 app.post('/upload', isAuthenticated, (req, res, next) => {
     upload.single('resume')(req, res, (err) => {
         if (err) {
+            // Previously, multer errors (wrong file type, >8MB, etc.) skipped this route's
+            // own try/catch and fell through to the app-wide error handler, which redirects
+            // to /login with a generic "Something went wrong" — confusing on the resume page.
             console.error('Upload middleware error:', err.message);
             const message = err.code === 'LIMIT_FILE_SIZE'
                 ? 'File is too large. Max size is 8MB.'
@@ -373,6 +229,8 @@ app.post('/upload', isAuthenticated, (req, res, next) => {
         const { text, method, charCount } = await extractText(req.file.buffer, req.file.originalname);
 
         if (!text || text.length < 20) {
+            // Shouldn't normally get here — extractText throws a specific reason first —
+            // but keep this as a last-resort guard.
             return res.status(422).json({
                 success: false,
                 message: 'Could not extract readable text from this file. Try a different file or paste the text directly.'
@@ -381,6 +239,9 @@ app.post('/upload', isAuthenticated, (req, res, next) => {
 
         res.json({ success: true, text, fileName: req.file.originalname, method, charCount });
     } catch (error) {
+        // extractText() now throws specific, actionable messages (scanned PDF + no OCR,
+        // corrupted docx, pdf-parse failure, etc.) — pass those through to the UI instead
+        // of masking everything as the same generic message.
         console.error('Upload error:', error);
         res.status(422).json({ success: false, message: error.message || 'Failed to process file' });
     }
@@ -422,7 +283,10 @@ app.post('/analyze', isAuthenticated, async (req, res) => {
         }
 
         const analysis = await analyzeResume(resumeText, targetJob);
+
+        // Stash in session so the interview flow can reuse it
         req.session.resumeData = { text: resumeText, targetJob, analysis };
+        // Reset any previous interview progress for a fresh resume/job
         req.session.interview = null;
 
         res.json({ success: true, analysis });
@@ -433,7 +297,7 @@ app.post('/analyze', isAuthenticated, async (req, res) => {
 });
 
 // ============================================================
-// INTERVIEW ROUTES (Same as before)
+// INTERVIEW ROUTES
 // ============================================================
 const requireResumeAnalysis = (req, res, next) => {
     if (!req.session.resumeData || !req.session.resumeData.text) {
@@ -461,6 +325,7 @@ app.post('/interview/start', isAuthenticated, requireResumeAnalysis, (req, res) 
     res.redirect('/interview/technical');
 });
 
+// ---- Technical round ----
 app.get('/interview/technical', isAuthenticated, requireResumeAnalysis, async (req, res) => {
     if (!req.session.interview) return res.redirect('/interview');
     const t = req.session.interview.technical;
@@ -483,7 +348,7 @@ app.get('/interview/technical', isAuthenticated, requireResumeAnalysis, async (r
 app.post('/interview/technical', isAuthenticated, requireResumeAnalysis, async (req, res) => {
     if (!req.session.interview) return res.redirect('/interview');
     const t = req.session.interview.technical;
-    t.answers = req.body;
+    t.answers = req.body; // { t1: "...", t2: "...", ... }
 
     try {
         t.result = await evaluateTechnical(t.questions, t.answers, req.session.resumeData.targetJob);
@@ -496,6 +361,7 @@ app.post('/interview/technical', isAuthenticated, requireResumeAnalysis, async (
     }
 });
 
+// ---- Coding round ----
 app.get('/interview/coding', isAuthenticated, requireResumeAnalysis, async (req, res) => {
     if (!req.session.interview) return res.redirect('/interview');
     const c = req.session.interview.coding;
@@ -532,6 +398,7 @@ app.post('/interview/coding', isAuthenticated, requireResumeAnalysis, async (req
     }
 });
 
+// ---- HR round ----
 app.get('/interview/hr', isAuthenticated, requireResumeAnalysis, async (req, res) => {
     if (!req.session.interview) return res.redirect('/interview');
     const h = req.session.interview.hr;
@@ -567,6 +434,7 @@ app.post('/interview/hr', isAuthenticated, requireResumeAnalysis, async (req, re
     }
 });
 
+// ---- Final report ----
 app.get('/interview/report', isAuthenticated, requireResumeAnalysis, async (req, res) => {
     const interview = req.session.interview;
     if (!interview || !interview.technical.result || !interview.coding.result || !interview.hr.result) {
@@ -584,43 +452,39 @@ app.get('/interview/report', isAuthenticated, requireResumeAnalysis, async (req,
             });
             interview.finalReport = finalReport;
 
+            // Persist to DB (best-effort; don't block the report page if this fails)
             try {
-                if (req.user && req.user.id) {
-                    const reportData = {
-                        user: req.user.id,
-                        targetJob: req.session.resumeData.targetJob,
-                        resumeSnapshot: req.session.resumeData.text.slice(0, 2000),
-                        technical: {
-                            questions: (interview.technical.questions || []).map(q => ({
-                                question: q.question || '',
-                                answer: interview.technical.answers[q.id] || ''
-                            })),
-                            score: interview.technical.result?.overallScore || 0,
-                            feedback: interview.technical.result?.feedback || ''
-                        },
-                        coding: {
-                            problem: interview.coding.problem?.title || '',
-                            code: interview.coding.code || '',
-                            language: interview.coding.language || 'javascript',
-                            score: interview.coding.result?.score || 0,
-                            feedback: interview.coding.result?.feedback || ''
-                        },
-                        hr: {
-                            questions: (interview.hr.questions || []).map(q => ({
-                                question: q.question || '',
-                                answer: interview.hr.answers[q.id] || ''
-                            })),
-                            score: interview.hr.result?.overallScore || 0,
-                            feedback: interview.hr.result?.feedback || ''
-                        },
-                        finalReport
-                    };
-
-                    await InterviewReport.create(reportData);
-                    console.log('✅ Interview report saved to database');
-                }
+                await InterviewReport.create({
+                    user: req.user.id,
+                    targetJob: req.session.resumeData.targetJob,
+                    resumeSnapshot: req.session.resumeData.text.slice(0, 2000),
+                    technical: {
+                        questions: interview.technical.questions.map(q => ({
+                            question: q.question,
+                            answer: interview.technical.answers[q.id] || ''
+                        })),
+                        score: interview.technical.result.overallScore,
+                        feedback: interview.technical.result.feedback
+                    },
+                    coding: {
+                        problem: interview.coding.problem.title,
+                        code: interview.coding.code,
+                        language: interview.coding.language,
+                        score: interview.coding.result.score,
+                        feedback: interview.coding.result.feedback
+                    },
+                    hr: {
+                        questions: interview.hr.questions.map(q => ({
+                            question: q.question,
+                            answer: interview.hr.answers[q.id] || ''
+                        })),
+                        score: interview.hr.result.overallScore,
+                        feedback: interview.hr.result.feedback
+                    },
+                    finalReport
+                });
             } catch (dbErr) {
-                console.error('❌ Could not persist interview report:', dbErr.message);
+                console.error('Could not persist interview report:', dbErr.message);
             }
         }
 
@@ -645,58 +509,14 @@ app.get('/interview/restart', isAuthenticated, (req, res) => {
 });
 
 // ============================================================
-// DEBUG ROUTES
+// DEBUG + ERROR HANDLING
 // ============================================================
 app.get('/debug/db', (req, res) => {
     const state = mongoose.connection.readyState;
-    const states = { 
-        0: 'disconnected', 
-        1: 'connected', 
-        2: 'connecting', 
-        3: 'disconnecting' 
-    };
-    const isConnected = state === 1;
-    
-    res.json({
-        connected: isConnected,
-        state: states[state] || 'unknown',
-        database: isConnected ? mongoose.connection.db.databaseName : null,
-        host: isConnected ? mongoose.connection.host : null,
-        collections: isConnected ? 'Available' : 'N/A'
-    });
+    const states = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+    res.json({ connected: state === 1, state: states[state] || 'unknown' });
 });
 
-app.get('/debug/test-db', async (req, res) => {
-    try {
-        if (mongoose.connection.readyState !== 1) {
-            return res.json({ success: false, message: 'Database not connected' });
-        }
-        
-        const userCount = await User.countDocuments();
-        const reportCount = await InterviewReport.countDocuments();
-        
-        res.json({
-            success: true,
-            message: 'Database is operational',
-            stats: {
-                userCount,
-                reportCount,
-                databaseName: mongoose.connection.db.databaseName,
-                connectionState: mongoose.connection.readyState
-            }
-        });
-    } catch (error) {
-        res.json({ 
-            success: false, 
-            message: 'Database test failed',
-            error: error.message 
-        });
-    }
-});
-
-// ============================================================
-// ERROR HANDLING
-// ============================================================
 app.use((req, res) => {
     res.status(404).send('Page not found');
 });
@@ -704,49 +524,21 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
     console.error('Unhandled error on', req.method, req.originalUrl, ':', err);
 
+    // JSON/API routes (fetch calls from the front-end) should get a JSON error,
+    // not an HTML redirect — the front-end JS expects response.json().
     if (req.path.startsWith('/upload') || req.path.startsWith('/analyze') ||
         req.path.startsWith('/get-suggestions') || req.path.startsWith('/search-job')) {
         return res.status(500).json({ success: false, message: err.message || 'Something went wrong' });
     }
 
+    // For page routes, send the user back to where they were rather than always to
+    // /login — being redirected to the login page from, say, the resume page after
+    // an unrelated error looked like a broken auth system even though auth was fine.
     req.flash('error_msg', 'Something went wrong: ' + (err.message || 'unknown error'));
     const fallback = req.isAuthenticated && req.isAuthenticated() ? '/dashboard' : '/login';
     res.redirect(fallback);
 });
 
-// ============================================================
-// START SERVER
-// ============================================================
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔗 MongoDB URI: ${MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')}`);
-    console.log(`\n🔐 Authentication Methods:`);
-    console.log(`   - Local (email/password): Enabled`);
-    console.log(`   - Google OAuth: ${process.env.GOOGLE_CLIENT_ID ? '✅ Enabled' : '❌ Disabled (set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)'}`);
-});
-
-// ============================================================
-// GRACEFUL SHUTDOWN
-// ============================================================
-process.on('SIGINT', async () => {
-    console.log('\n⚠️  Shutting down server...');
-    try {
-        await mongoose.connection.close();
-        console.log('✅ MongoDB connection closed');
-    } catch (err) {
-        console.error('Error closing MongoDB connection:', err);
-    }
-    process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-    console.log('\n⚠️  Shutting down server...');
-    try {
-        await mongoose.connection.close();
-        console.log('✅ MongoDB connection closed');
-    } catch (err) {
-        console.error('Error closing MongoDB connection:', err);
-    }
-    process.exit(0);
+    console.log(`Server running on http://localhost:${PORT}`);
 });
