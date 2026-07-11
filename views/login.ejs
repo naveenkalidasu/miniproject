@@ -1,239 +1,237 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Login - CareerPilot</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - PropAI</title>
+    <!-- Font Awesome for Google icon (free brand icon) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f1f5f9;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            margin: 0;
             padding: 20px;
         }
-
-        .login-container {
+        .container {
             background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+            padding: 40px 36px;
             width: 100%;
             max-width: 400px;
         }
-
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-            font-weight: 600;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-            font-weight: 500;
-        }
-
+        .logo { text-align: center; margin-bottom: 4px; }
+        .logo h1 { font-size: 26px; font-weight: 700; color: #1e293b; }
+        .logo span { color: #3b82f6; }
+        h2 { color: #1e293b; text-align: center; margin-bottom: 24px; font-weight: 600; font-size: 18px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 6px; color: #475569; font-weight: 600; font-size: 13px; }
+        .input-wrap { position: relative; }
         input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-            transition: border-color 0.3s;
+            padding: 11px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: inherit;
         }
-
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        input:focus { outline: none; border-color: #3b82f6; }
+        .toggle-pw {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; font-size: 13px; color: #64748b;
         }
-
         .btn {
             width: 100%;
             padding: 12px;
-            background: #667eea;
+            background: #3b82f6;
             color: white;
             border: none;
-            border-radius: 5px;
-            font-size: 16px;
+            border-radius: 12px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.3s, transform 0.1s;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
+        .btn:hover { background: #2563eb; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .spinner { display: none; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .alert { padding: 12px 14px; border-radius: 10px; margin-bottom: 18px; font-size: 13px; }
+        .alert-success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .register-link { text-align: center; margin-top: 18px; color: #64748b; font-size: 13px; }
+        .register-link a { color: #3b82f6; text-decoration: none; font-weight: 600; }
+        .register-link a:hover { text-decoration: underline; }
+        .cloud-badge { text-align: center; font-size: 11px; color: #94a3b8; margin-top: 14px; }
+        .cloud-badge span { background: #f0fdf4; padding: 4px 12px; border-radius: 999px; color: #16a34a; font-weight: 600; }
 
-        .btn:hover {
-            background: #5a67d8;
+        /* --- Divider & Google button --- */
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 22px 0 18px;
+            color: #94a3b8;
+            font-size: 12px;
         }
-
-        .btn:active {
-            transform: scale(0.98);
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
         }
+        .divider::before { margin-right: 14px; }
+        .divider::after { margin-left: 14px; }
 
         .btn-google {
-            background: #db4437;
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .btn-google:hover {
-            background: #c53929;
-        }
-
-        .divider {
-            text-align: center;
-            margin: 25px 0;
-            color: #999;
-            position: relative;
-        }
-
-        .divider::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: #ddd;
-        }
-
-        .divider span {
+            width: 100%;
+            padding: 12px;
             background: white;
-            padding: 0 15px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .alert {
-            padding: 12px 16px;
-            border-radius: 5px;
-            margin-bottom: 20px;
+            color: #1e293b;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
             font-size: 14px;
-        }
-
-        .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .register-link {
-            text-align: center;
-            margin-top: 20px;
-            color: #666;
-        }
-
-        .register-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .register-link a:hover {
-            text-decoration: underline;
-        }
-
-        .or-text {
-            text-align: center;
-            color: #999;
-            margin: 10px 0;
-        }
-
-        .social-login {
-            margin-top: 5px;
-        }
-
-        .social-login .btn {
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
+            background-color: #fafafa;
+            margin-top: 4px;
         }
-
-        /* Responsive */
-        @media (max-width: 480px) {
-            .login-container {
-                padding: 25px 20px;
-            }
+        .btn-google:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
         }
+        .btn-google i {
+            font-size: 18px;
+            color: #4285F4; /* classic Google blue */
+        }
+        .btn-google:active {
+            background: #e9eef3;
+        }
+        /* small note: we keep the cloud badge at bottom */
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <h1>Prop ai</h1>
+    <div class="container">
+        <div class="logo"><h1>Prop<span>AI</span></h1></div>
+        <h2>🔐 Welcome Back</h2>
 
-        <!-- Flash Messages -->
-        <% if (messages && messages.error_msg) { %>
-            <div class="alert alert-error">
-                <%= messages.error_msg %>
-            </div>
+        <!-- messages (placeholder, will be populated by server) -->
+        <% if (messages.error_msg) { %>
+            <div class="alert alert-error">⚠️ <%= messages.error_msg %></div>
+        <% } %>
+        <% if (messages.success_msg) { %>
+            <div class="alert alert-success">✅ <%= messages.success_msg %></div>
         <% } %>
 
-        <% if (messages && messages.success_msg) { %>
-            <div class="alert alert-success">
-                <%= messages.success_msg %>
-            </div>
-        <% } %>
-
-        <!-- Local Login Form -->
-        <form action="/login" method="POST">
+        <!-- standard login form -->
+        <form action="/login" method="POST" id="loginForm">
             <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                <label for="email">Email address</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                <div class="input-wrap">
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+                    <button type="button" class="toggle-pw" id="togglePw">Show</button>
+                </div>
             </div>
-            <button type="submit" class="btn">Sign In</button>
+            <button type="submit" class="btn" id="submitBtn">
+                <span class="spinner" id="spinner"></span>
+                <span id="btnText">Sign in</span>
+            </button>
         </form>
 
         <!-- Divider -->
-        <div class="divider"><span>OR</span></div>
+        <div class="divider">or continue with</div>
 
-        <!-- Google Sign In (conditionally rendered) -->
-        <% if (hasGoogleAuth) { %>
-            <div class="social-login">
-                <a href="/auth/google" style="text-decoration: none;">
-                    <button type="button" class="btn btn-google">
-                        <svg width="20" height="20" viewBox="0 0 48 48" style="flex-shrink: 0;">
-                            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                        </svg>
-                        <span>Sign in with Google</span>
-                    </button>
-                </a>
-            </div>
-        <% } %>
+        <!-- Sign in with Google button -->
+        <button class="btn-google" id="googleSignInBtn">
+            <i class="fab fa-google"></i> Sign in with Google
+        </button>
 
-        <!-- Register Link -->
         <div class="register-link">
-            Don't have an account? <a href="/register">Register here</a>
+            Don't have an account? <a href="/register">Create one now</a>
         </div>
+        <div class="cloud-badge"><span>☁️ Cloud database · access from anywhere</span></div>
     </div>
+
+    <script>
+        (function() {
+            // --- toggle password visibility ---
+            const togglePw = document.getElementById('togglePw');
+            const password = document.getElementById('password');
+            if (togglePw && password) {
+                togglePw.onclick = function() {
+                    const isHidden = password.type === 'password';
+                    password.type = isHidden ? 'text' : 'password';
+                    togglePw.textContent = isHidden ? 'Hide' : 'Show';
+                };
+            }
+
+            // --- login form submission feedback ---
+            const form = document.getElementById('loginForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const spinner = document.getElementById('spinner');
+            const btnText = document.getElementById('btnText');
+
+            if (form) {
+                form.addEventListener('submit', function() {
+                    submitBtn.disabled = true;
+                    if (spinner) spinner.style.display = 'inline-block';
+                    if (btnText) btnText.textContent = 'Signing in...';
+                });
+            }
+
+            // --- Google Sign-In simulation (demo action) ---
+            const googleBtn = document.getElementById('googleSignInBtn');
+            if (googleBtn) {
+                googleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    // In a real implementation, this would redirect to Google OAuth or open a popup.
+                    // For demonstration, we show a friendly alert that simulates the flow.
+                    // We also add a tiny spinner-like feedback to the button (optional)
+                    const originalText = googleBtn.innerHTML;
+                    googleBtn.innerHTML = '<i class="fas fa-spinner fa-pulse" style="color:#4285F4;"></i> Connecting...';
+                    googleBtn.disabled = true;
+
+                    // Simulate async OAuth redirect (after 1.2s we restore and show a message)
+                    setTimeout(function() {
+                        // restore button
+                        googleBtn.innerHTML = originalText;
+                        googleBtn.disabled = false;
+                        // Show a mock success message (or you could redirect to /auth/google)
+                        // For this demo we mimic an OAuth redirect by showing an alert.
+                        // In a real app you would window.location.href = '/auth/google';
+                        // but we'll just show a message:
+                        const msgDiv = document.createElement('div');
+                        msgDiv.className = 'alert alert-success';
+                        msgDiv.innerHTML = '✅ Google sign-in simulated. (Redirect to OAuth would happen here.)';
+                        // insert after the button
+                        const container = document.querySelector('.container');
+                        const divider = document.querySelector('.divider');
+                        // insert before divider
+                        container.insertBefore(msgDiv, divider.nextSibling);
+                        // remove after 5s
+                        setTimeout(() => { if (msgDiv.parentNode) msgDiv.remove(); }, 5000);
+                    }, 1200);
+                });
+            }
+
+        })();
+    </script>
 </body>
 </html>
